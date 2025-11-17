@@ -7,6 +7,7 @@
   </head>
 <body>
 <div class="container fade-in">
+
   <h1 class="gradient-text">Canteen Menu Optimizer</h1>
 
   <div class="card slide-up">
@@ -17,29 +18,6 @@
     </form>
   </div>
 
-  <div class="card slide-up">
-    <h2>Single Prediction</h2>
-    <form method="POST">
-      <label>Cuisine</label>
-      <select name="cuisine" class="input-select">
-        {% for c in cuisine_options %}
-        <option>{{ c }}</option>
-        {% endfor %}
-      </select>
-
-      <label>Spice Tolerance</label>
-      <select name="spice" class="input-select">
-        {% for s in spice_options %}
-        <option>{{ s }}</option>
-        {% endfor %}
-      </select>
-
-      <label>Sweet Tooth (1–5)</label>
-      <input type="number" name="sweet" min="1" max="5" class="input-text">
-
-      <button class="btn">Predict</button>
-    </form>
-  </div>
 </div>
 </body>
 </html>
