@@ -1,0 +1,37 @@
+feature,importance
+Food Budget per meal Note: Provide integer value for eg like-199,0.06083450224739157
+"  Books read past year
+Provide in integer value between (0-50)  ",0.050138877122511506
+"  Gaming hours per week  
+(Provide Values in integer between 0-50)",0.04830046607839044
+Cuisine_top2,0.041796109914558975
+"Weekly_hobby_hours   
+provide values integer between between 0-40",0.03514604927420742
+"Budget per trip(in-Indian Rupees)
+Provide in integer values between 1000-100000",0.03154249399561276
+  Listening hours per day  ,0.025960622817182286
+Ott Top1,0.02542416957920014
+  Hobby top2  ,0.023905604551882943
+  Game Genre Top1,0.023055208078896224
+  Series_genre_top1  ,0.02295028544197593
+Age,0.021753319293087624
+"  Fashion spend per month(in-inr)
+Provide values in integer   between (0-2000 numeric)",0.021057777697736292
+  Content_lang_top3  ,0.01937991430939168
+  Gaming Platform Top2 ,0.019218831534635276
+  Book Genre Top 3  ,0.01803579117455584
+  Series_genre_top3  ,0.01660134212001116
+  Movie_genre_top2  ,0.015833521211390537
+  Music language top 2  ,0.015239477978795346
+  Movie_genre_top3 ,0.014888207749502029
+  Binge frequency per week  ,0.014788034718182809
+  Game Genre Top2,0.014167030321463993
+Cuisine_top3,0.014099366363650528
+"  Travel frequency per year
+Choose any value from here  ",0.01338182767959781
+  Reads Books   ,0.012763567434380237
+  Travel_type_top3,0.012592069028904555
+Hobby_top1  ,0.012506790833641743
+Club top 2,0.0122441630063447
+  Risk taking  ,0.012184119892930561
+  Introversion extraversion  ,0.011219581735995713
