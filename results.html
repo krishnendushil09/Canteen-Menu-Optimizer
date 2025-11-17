@@ -1,0 +1,33 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Results</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div class="container fade-in">
+<h1 class="gradient-text">Prediction Results</h1>
+<a href="/" class="back-link">← Back</a>
+
+{% if single_prediction %}
+<div class="card slide-up">
+  <h2>Single Prediction</h2>
+  <p class="prediction-text">{{ single_prediction }}</p>
+</div>
+{% endif %}
+
+{% if image_data %}
+<div class="card slide-up">
+  <img class="result-img" src="data:image/png;base64,{{ image_data }}">
+</div>
+{% endif %}
+
+{% if table_html %}
+<div class="card slide-up">
+  {{ table_html|safe }}
+</div>
+{% endif %}
+</div>
+</body>
+</html>
