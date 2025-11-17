@@ -1,0 +1,14 @@
+{
+  "user_requested": {
+    "target": "Diet Type",
+    "cuisine": "Cuisine_top1",
+    "spice": "Spice Tolerance Level",
+    "sweet": "Sweet Tooth Level"
+  },
+  "mapped": {
+    "target": "Dietary Preference",
+    "cuisine": "Cuisine_top1",
+    "spice": "Spice Tolerance",
+    "sweet": "Sweet tooth level (1 is low and 5 is high)"
+  }
+}
