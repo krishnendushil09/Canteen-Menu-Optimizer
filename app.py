@@ -1,77 +1,148 @@
-from flask import Flask, render_template, request, redirect, url_for, flash
-import os, io, base64, pickle
-import numpy as np
+from flask import Flask, render_template, request
+import os
+import pickle
 import pandas as pd
-import matplotlib.pyplot as plt
+import numpy as np
+import json
 
 app = Flask(__name__)
-app.secret_key = 'dev-secret'
+app.secret_key = "canteen-secret"
 
-MODEL_DIR = os.path.join(os.path.dirname(__file__), 'models')
-model = pickle.load(open(os.path.join(MODEL_DIR,'best_model.pkl'),'rb'))
-le_target = pickle.load(open(os.path.join(MODEL_DIR,'label_encoder_target.pkl'),'rb'))
-le_cuisine = pickle.load(open(os.path.join(MODEL_DIR,'label_encoder_cuisine.pkl'),'rb'))
-le_spice = pickle.load(open(os.path.join(MODEL_DIR,'label_encoder_spice.pkl'),'rb'))
+# ============================
+# LOAD MODELS & PREPROCESSORS
+# ============================
 
-def fig_to_base64(fig):
-    buf = io.BytesIO()
-    fig.savefig(buf, format='png', bbox_inches='tight')
-    buf.seek(0)
-    out = base64.b64encode(buf.read()).decode('utf-8')
-    plt.close(fig)
-    return out
+MODEL_DIR = os.path.join(os.path.dirname(__file__), "models")
 
-@app.route('/', methods=['GET','POST'])
+# Load trained model
+with open(os.path.join(MODEL_DIR, "best_model.pkl"), "rb") as f:
+    model = pickle.load(f)
+
+# Load target encoder
+with open(os.path.join(MODEL_DIR, "label_encoder_target.pkl"), "rb") as f:
+    le_target = pickle.load(f)
+
+# Load all feature encoders
+with open(os.path.join(MODEL_DIR, "label_encoders.pkl"), "rb") as f:
+    label_encoders = pickle.load(f)
+
+# Load numeric imputer
+with open(os.path.join(MODEL_DIR, "numeric_imputer.pkl"), "rb") as f:
+    numeric_imputer = pickle.load(f)
+
+# Load meta file (contains final feature list)
+with open(os.path.join(MODEL_DIR, "meta.json"), "r") as f:
+    meta = json.load(f)
+
+FEATURES = meta["features"]  # exact 67 training features
+
+
+# ============================
+# PREPROCESS FUNCTION
+# ============================
+
+def preprocess(df):
+    """
+    df = DataFrame containing the columns used during training
+    returns processed numpy array
+    """
+
+    # 1. Ensure all expected features exist
+    for col in FEATURES:
+        if col not in df.columns:
+            df[col] = np.nan  # create missing column
+
+    X = df[FEATURES].copy()
+
+    # 2. Identify numeric columns
+    numeric_cols = []
+    for col in X.columns:
+        if pd.api.types.is_numeric_dtype(X[col]):
+            numeric_cols.append(col)
+
+    # Apply numeric imputation
+    if numeric_cols:
+        X[numeric_cols] = numeric_imputer.transform(X[numeric_cols])
+
+    # 3. Encode categorical features
+    for col, encoder in label_encoders.items():
+        if col in X.columns:
+            vals = X[col].astype(str).str.strip().fillna("<<MISSING>>")
+
+            # handle unseen labels
+            known = set(encoder.classes_)
+            cleaned = []
+            for v in vals:
+                if v in known:
+                    cleaned.append(v)
+                else:
+                    cleaned.append("<<MISSING>>")
+
+            X[col] = encoder.transform(cleaned)
+
+    return X.values.astype(float)
+
+
+# ============================
+# ROUTES
+# ============================
+
+@app.route("/", methods=["GET", "POST"])
 def index():
-    if request.method=='POST':
-        if 'csv_file' in request.files and request.files['csv_file'].filename:
-            df = pd.read_csv(request.files['csv_file'])
-            cols = {
-                'cuisine':'Cuisine_top1',
-                'spice':'Spice Tolerance',
-                'sweet':'Sweet tooth level (1 is low and 5 is high)'
-            }
-            data = df[[cols['cuisine'],cols['spice'],cols['sweet']]].copy()
-            data[cols['cuisine']] = data[cols['cuisine']].astype(str).str.strip()
-            data[cols['spice']] = data[cols['spice']].astype(str).str.strip()
-            data[cols['sweet']] = pd.to_numeric(data[cols['sweet']], errors='coerce')
-            data = data.dropna()
 
-            X = np.vstack([
-                le_cuisine.transform(data[cols['cuisine']]),
-                le_spice.transform(data[cols['spice']]),
-                data[cols['sweet']].astype(float)
-            ]).T
+    if request.method == "POST":
 
+        # ============================
+        #  BULK CSV PREDICTION
+        # ============================
+        if "csv_file" in request.files and request.files["csv_file"].filename:
+            csv = request.files["csv_file"]
+            df = pd.read_csv(csv)
+
+            # Preprocess
+            X = preprocess(df)
             preds = model.predict(X)
             labels = le_target.inverse_transform(preds)
-            data['predicted_diet'] = labels
 
-            fig = plt.figure()
-            data['predicted_diet'].value_counts().plot(kind='bar')
-            plt.title('Predicted Diet Distribution')
-            img = fig_to_base64(fig)
+            df["Predicted Diet"] = labels
 
-            return render_template('results.html',
-                                   image_data=img,
-                                   table_html=data.head(50).to_html(index=False))
+            # Show only relevant columns (inputs + output)
+            show_cols = list(df.columns)
+            table_html = df[show_cols].head(50).to_html(index=False)
 
-        cuisine = request.form.get('cuisine')
-        spice = request.form.get('spice')
-        sweet = request.form.get('sweet')
-        if cuisine and spice and sweet:
-            X = np.array([[
-                le_cuisine.transform([cuisine])[0],
-                le_spice.transform([spice])[0],
-                float(sweet)
-            ]])
-            pred = model.predict(X)[0]
-            label = le_target.inverse_transform([pred])[0]
-            return render_template('results.html', single_prediction=label)
+            return render_template(
+                "results.html",
+                table_html=table_html,
+                image_data=None,
+                single_prediction=None
+            )
 
-    return render_template('index.html',
-                           cuisine_options=list(le_cuisine.classes_),
-                           spice_options=list(le_spice.classes_))
+        # ============================
+        #  SINGLE PREDICTION
+        # ============================
+        # For a single form, we create a row with all 67 features
+        form_dict = request.form.to_dict()
 
-if __name__=='__main__':
+        # Create empty row with ALL features
+        row = pd.DataFrame([{col: np.nan for col in FEATURES}])
+
+        # Fill known fields (ONLY if user provided)
+        for key, val in form_dict.items():
+            if key in row.columns:
+                row[key] = val
+
+        X = preprocess(row)
+        pred = model.predict(X)[0]
+        label = le_target.inverse_transform([pred])[0]
+
+        return render_template("results.html", single_prediction=label)
+
+    return render_template("index.html")
+
+
+# ============================
+# MAIN
+# ============================
+
+if __name__ == "__main__":
     app.run(debug=True)
