@@ -1,0 +1,15 @@
+{
+  "target_col": "Dietary Preference",
+  "cuisine_col": "Cuisine_top1",
+  "spice_col": "Spice Tolerance",
+  "sweet_col": "Sweet tooth level (1 is low and 5 is high)",
+  "classes": [
+    "Eggitarian",
+    "Jain",
+    "Non-Veg",
+    "Veg",
+    "Vegan"
+  ],
+  "best_model": "LogisticRegression",
+  "best_accuracy": 0.8260869565217391
+}
