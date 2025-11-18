@@ -47,14 +47,14 @@ def preprocess(df):
     returns processed numpy array
     """
 
-    # 1. Ensure all expected features exist
+    # Ensure all expected features exist
     for col in FEATURES:
         if col not in df.columns:
-            df[col] = np.nan  # create missing column
+            df[col] = np.nan
 
     X = df[FEATURES].copy()
 
-    # 2. Identify numeric columns
+    # Identify numeric columns
     numeric_cols = []
     for col in X.columns:
         if pd.api.types.is_numeric_dtype(X[col]):
@@ -64,19 +64,19 @@ def preprocess(df):
     if numeric_cols:
         X[numeric_cols] = numeric_imputer.transform(X[numeric_cols])
 
-    # 3. Encode categorical features
+    # Encode categorical features safely
     for col, encoder in label_encoders.items():
         if col in X.columns:
-            vals = X[col].astype(str).str.strip().fillna("<<MISSING>>")
 
-            # handle unseen labels
-            known = set(encoder.classes_)
-            cleaned = []
-            for v in vals:
-                if v in known:
-                    cleaned.append(v)
-                else:
-                    cleaned.append("<<MISSING>>")
+            vals = X[col].astype(str).str.strip()
+            vals = vals.replace(["nan", "", "None", "NaN"], "<<MISSING>>")
+
+            # If "<<MISSING>>" was NOT part of training, fallback to first encoder class
+            if "<<MISSING>>" not in encoder.classes_:
+                fallback = encoder.classes_[0]  
+                cleaned = [v if v in encoder.classes_ else fallback for v in vals]
+            else:
+                cleaned = [v if v in encoder.classes_ else "<<MISSING>>" for v in vals]
 
             X[col] = encoder.transform(cleaned)
 
@@ -92,41 +92,30 @@ def index():
 
     if request.method == "POST":
 
-        # ============================
-        #  BULK CSV PREDICTION
-        # ============================
+        # ---------- BULK CSV PREDICTION ----------
         if "csv_file" in request.files and request.files["csv_file"].filename:
             csv = request.files["csv_file"]
             df = pd.read_csv(csv)
 
-            # Preprocess
             X = preprocess(df)
             preds = model.predict(X)
             labels = le_target.inverse_transform(preds)
 
             df["Predicted Diet"] = labels
 
-            # Show only relevant columns (inputs + output)
-            show_cols = list(df.columns)
-            table_html = df[show_cols].head(50).to_html(index=False)
+            table_html = df.head(50).to_html(index=False)
 
             return render_template(
                 "results.html",
                 table_html=table_html,
-                image_data=None,
                 single_prediction=None
             )
 
-        # ============================
-        #  SINGLE PREDICTION
-        # ============================
-        # For a single form, we create a row with all 67 features
+        # ---------- SINGLE INPUT PREDICTION ----------
         form_dict = request.form.to_dict()
 
-        # Create empty row with ALL features
         row = pd.DataFrame([{col: np.nan for col in FEATURES}])
 
-        # Fill known fields (ONLY if user provided)
         for key, val in form_dict.items():
             if key in row.columns:
                 row[key] = val
